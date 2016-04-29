@@ -23,16 +23,15 @@
 #############################################################################*/
 """Command line interface to execute main() functions in silx modules.
 
-This version uses pkgutil.walk_packages to find a list of all modules. 
-This means that all modules are imported (can be an issue in case of circular
-import)."""
+This version uses ``os.walk`` to find a list of all ``.py`` and ``.so`` files.
+This has the advantage of not needing to import all packages."""
 
 __authors__ = ["P. Knobel"]
 __license__ = "MIT"
-__date__ = "28/04/2016"
+__date__ = "29/04/2016"
 
 import argparse
-import pkgutil
+import os
 import sys
 from importlib import import_module
 
@@ -44,18 +43,26 @@ parser.add_argument('command',
 parser.add_argument('mainargs', nargs='*',
                     help='arguments passed to the main() function')
 
-
 args = parser.parse_args()
 
 longmodnames = []
-for importer, modname, ispkg in pkgutil.walk_packages(
-                                            path=silx.__path__,
-                                            prefix=silx.__name__+ '.',
-                                            onerror=lambda x: None):
-    longmodnames.append(modname)
+silx_path = silx.__path__[0]
 
+for dirpath, _, filelist in os.walk(silx_path):
+    if "__init__.py" in filelist:
+        modfilelist = [fname for fname in filelist if
+                       fname.endswith(".py") or fname.endswith(".so")]
+        for fname in modfilelist:
+            if fname == "__init__.py":
+                # module name is the dir name
+                modpath = dirpath
+                modname = modpath.replace(silx_path, "silx").replace("/", ".")
+            else:
+                # module name is the file name without the extension
+                modpath = os.path.join(dirpath, fname)
+                modname = modpath.replace(silx_path, "silx").replace("/", ".")[:-3]
 
-print(longmodnames)
+            longmodnames.append(modname)
 
 shortmodnames = [modname.split(".")[-1] for modname in longmodnames]
 
@@ -73,9 +80,16 @@ else:
     print(longmodnames)
     sys.exit(2)
 
-print("Running module " + longmodname)
 m = import_module(longmodname)
 main = getattr(m, "main")
-main(*args.mainargs)
+
+# the signature of main() should be `int main(*argv)`
+status = main(*args.mainargs)
+
+# if status is an int, it is considered an exit status
+# (0 for success, 1 for general errors, 2 for command line syntax error…)
+# None is equivalent to 0, any other object is printed to stderr and results
+# in an exit code of 1
+sys.exit(status)
 
 
