@@ -28,7 +28,7 @@ This has the advantage of not needing to import all packages."""
 
 __authors__ = ["P. Knobel"]
 __license__ = "MIT"
-__date__ = "29/04/2016"
+__date__ = "02/05/2016"
 
 import argparse
 import os
@@ -56,11 +56,11 @@ for dirpath, _, filelist in os.walk(silx_path):
             if fname == "__init__.py":
                 # module name is the dir name
                 modpath = dirpath
-                modname = modpath.replace(silx_path, "silx").replace("/", ".")
+                modname = modpath.replace(silx_path, "silx").replace(os.sep, ".")
             else:
                 # module name is the file name without the extension
                 modpath = os.path.join(dirpath, fname)
-                modname = modpath.replace(silx_path, "silx").replace("/", ".")[:-3]
+                modname = modpath.replace(silx_path, "silx").replace(os.sep, ".")[:-3]
 
             longmodnames.append(modname)
 
@@ -70,9 +70,12 @@ if args.command in longmodnames:
     longmodname = args.command
 elif args.command in shortmodnames:
     if shortmodnames.count(args.command) > 1:
-        print("Ambiguous module name: " + args.command)
-        print("Found %d modules with this name" % shortmodnames.count(args.command))
-        sys.exit(1)
+        found_modules = [mod for mod in longmodnames if mod.endswith(args.command)]
+        print("Ambiguous module name '%s', found %d candidates: %s" %
+              (args.command, shortmodnames.count(args.command),
+               str(found_modules)))
+        print("Try again using the complete module name")
+        sys.exit(2)
     longmodname = longmodnames[shortmodnames.index(args.command)]
 else:
     print("No module " + args.command + " found")

@@ -25,11 +25,11 @@
 
 This version uses pkgutil.walk_packages to find a list of all modules.
 This means that all packages (not all modules) are imported. This can cause
-issues (circular import?)."""
+issues (circular imports ?)."""
 
 __authors__ = ["P. Knobel"]
 __license__ = "MIT"
-__date__ = "29/04/2016"
+__date__ = "02/05/2016"
 
 import argparse
 import pkgutil
@@ -44,16 +44,14 @@ parser.add_argument('command',
 parser.add_argument('mainargs', nargs='*',
                     help='arguments passed to the main() function')
 
-
 args = parser.parse_args()
 
 longmodnames = []
 for importer, modname, ispkg in pkgutil.walk_packages(
                                             path=silx.__path__,
-                                            prefix=silx.__name__+ '.',
+                                            prefix=silx.__name__ + '.',
                                             onerror=lambda x: None):
     longmodnames.append(modname)
-
 
 shortmodnames = [modname.split(".")[-1] for modname in longmodnames]
 
@@ -61,9 +59,12 @@ if args.command in longmodnames:
     longmodname = args.command
 elif args.command in shortmodnames:
     if shortmodnames.count(args.command) > 1:
-        print("Ambiguous module name: " + args.command)
-        print("Found %d modules with this name" % shortmodnames.count(args.command))
-        sys.exit(1)
+        found_modules = [mod for mod in longmodnames if mod.endswith(args.command)]
+        print("Ambiguous module name '%s', found %d candidates: %s" %
+              (args.command, shortmodnames.count(args.command),
+               str(found_modules)))
+        print("Try again using the complete module name")
+        sys.exit(2)
     longmodname = longmodnames[shortmodnames.index(args.command)]
 else:
     print("No module " + args.command + " found")
@@ -82,4 +83,5 @@ status = main(*args.mainargs)
 # None is equivalent to 0, any other object is printed to stderr and results
 # in an exit code of 1
 sys.exit(status)
+
 
