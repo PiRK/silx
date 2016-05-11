@@ -21,10 +21,28 @@
 # THE SOFTWARE.
 #
 #############################################################################*/
-"""Command line interface to execute main() functions in silx modules.
+"""Command line interface to execute the main() functions in any silx module.
 
-This version uses ``os.walk`` to find a list of all ``.py`` and ``.so`` files.
-This has the advantage of not needing to import all packages."""
+This version uses ``os.walk`` to find a list of all ``.py`` and ``.so`` files
+in directories containing a __init__.py file.
+
+A module name can be specified as a long name (e.g silx.gui.plot.PlotWindow),
+or as a short name (eg PlotWindow if there is no ambiguity).
+
+
+usage: runmodule_oswalk.py [-h] [-l] [-s SEARCH] [module] ...
+
+positional arguments:
+  module                Module name whose main() function you want to run
+  mainargs              Additional arguments for the module's main() function
+
+optional arguments:
+  -h, --help            Show a help message and exit
+  -l, --list-modules    List all available modules and exit
+  -s SEARCH, --search SEARCH
+                        List modules containing the specified SEARCH string
+                        and exit
+"""
 
 __authors__ = ["P. Knobel"]
 __license__ = "MIT"
@@ -41,13 +59,32 @@ import silx
 # Parse command line arguments
 ##############################################################################
 
-parser = argparse.ArgumentParser(description='Interface script for silx')
-parser.add_argument('command',
-                    help='module name whose main() function you want to run')
-parser.add_argument('mainargs', nargs='*',
-                    help='arguments passed to the main() function')
+parser = argparse.ArgumentParser(description='Interface script for silx',
+                                 add_help=False)
+parser.add_argument('module',
+                    help='Module name whose main() function you want to run',
+                    nargs="?")
+parser.add_argument('mainargs', nargs=argparse.REMAINDER,
+                    help="Additional arguments for the module's main() function")
+# we overwrite the -h option to be able to print a module specific message
+parser.add_argument("-h", "--help", action="store_true",
+                    help="Show a help message and exit")
+parser.add_argument("-l", "--list-modules", action="store_true",
+                    help="List all available modules and exit")
+parser.add_argument("-s", "--search",
+    help="List modules containing the specified SEARCH string and exit")
 
 args = parser.parse_args()
+
+if args.module is None:
+    if args.help:
+        parser.print_help()
+        sys.exit()
+    elif not args.list_modules and args.search is None:
+        parser.print_help()
+        print("Error: too few arguments")
+        print("You must supply a valid module name or one option (-h -l -s)")
+        sys.exit(2)
 
 ##############################################################################
 # Get list of all modules
@@ -76,44 +113,79 @@ for dirpath, _, filelist in os.walk(silx_path):
 
 shortmodnames = [modname.split(".")[-1] for modname in longmodnames]
 
+##############################################################################
+# Display available modules if -l/--list-modules was specified
+##############################################################################
+if args.list_modules:
+    print("Available modules:")
+    for modname in sorted(longmodnames):
+        print(modname)
+    sys.exit()
+
+##############################################################################
+# Display available modules if -s/--search was specified
+##############################################################################
+if args.search is not None:
+    print("Modules containing '%s':" % args.search)
+    for modname in sorted(longmodnames):
+        if args.search in modname:
+            print("\t" + modname)
+    sys.exit()
 
 ##############################################################################
 # Check that command line arguments correspond to an existing non-ambiguous
 # module name
 ##############################################################################
-if args.command in longmodnames:
-    longmodname = args.command
-elif args.command in shortmodnames:
-    if shortmodnames.count(args.command) > 1:
-        found_modules = [mod for mod in longmodnames if mod.endswith(args.command)]
+if args.module in longmodnames:
+    longmodname = args.module
+elif args.module in shortmodnames:
+    if shortmodnames.count(args.module) > 1:
+        found_modules = [mod for mod in longmodnames if mod.endswith(args.module)]
         print("Ambiguous module name '%s', found %d candidates: %s" %
-              (args.command, shortmodnames.count(args.command),
+              (args.module, shortmodnames.count(args.module),
                str(found_modules)))
         print("Try again using the complete module name")
         sys.exit(2)
-    longmodname = longmodnames[shortmodnames.index(args.command)]
+    longmodname = longmodnames[shortmodnames.index(args.module)]
 else:
-    print("No module " + args.command + " found")
-    print("Available modules:")
-    print(longmodnames)
+    print("No module " + args.module + " found")
+    print("Use -l to list all available modules")
+    print("Use -s %s to search module names containing '%s'" % (args.module, args.module))
     sys.exit(2)
 
 ##############################################################################
-# Import the module and run the main function
-#
-# TODO: 
-# - catch TypeError and print main.__doc__ (should contain at least the 
-#   function signature)
-# - catch AttributeError to print a helpful message about missing main()
-# - overload default -h --help message to print module's main.__doc__ 
-#   (if module is found and has a main function)
+# Import module, check the presence of a main() function
 ##############################################################################
 
 m = import_module(longmodname)
-main = getattr(m, "main")
 
-# the signature of main() should be `int main(*argv)`
-status = main(*args.mainargs)
+if not 'main' in dir(m):
+    print("Error: Module %s does not have a main() function" % longmodname)
+    sys.exit(1)
+
+##############################################################################
+# Display help and exit if -h/--help was specified
+##############################################################################
+if args.help:
+    if m.main.__doc__ is None or m.main.__doc__.strip() == "":
+        print("%s.main does not have a docstring" % longmodname)
+    else:
+        print(m.main.__doc__)
+    sys.exit()
+
+##############################################################################
+# Import the module and run the main function
+##############################################################################
+
+try:
+    # the signature of m.main() should be `int main(*argv)`
+    status = m.main(*args.mainargs)
+except TypeError:
+    print("Error: wrong number of arguments for the main() function")
+    if m.main.__doc__ is not None:
+        print("Docstrinq of %s.main:" % longmodname)
+        print(m.main.__doc__)
+    sys.exit(1)
 
 # if status is an int, it is considered an exit status
 # (0 for success, 1 for general errors, 2 for command line syntax error)
