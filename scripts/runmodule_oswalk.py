@@ -28,7 +28,7 @@ This has the advantage of not needing to import all packages."""
 
 __authors__ = ["P. Knobel"]
 __license__ = "MIT"
-__date__ = "02/05/2016"
+__date__ = "11/05/2016"
 
 import argparse
 import os
@@ -37,6 +37,10 @@ from importlib import import_module
 
 import silx
 
+##############################################################################
+# Parse command line arguments
+##############################################################################
+
 parser = argparse.ArgumentParser(description='Interface script for silx')
 parser.add_argument('command',
                     help='module name whose main() function you want to run')
@@ -44,6 +48,12 @@ parser.add_argument('mainargs', nargs='*',
                     help='arguments passed to the main() function')
 
 args = parser.parse_args()
+
+##############################################################################
+# Get list of all modules
+# We fill two list, one with complete module names including namespace, and
+# another one with short name (after the last .)
+##############################################################################
 
 longmodnames = []
 silx_path = silx.__path__[0]
@@ -66,6 +76,11 @@ for dirpath, _, filelist in os.walk(silx_path):
 
 shortmodnames = [modname.split(".")[-1] for modname in longmodnames]
 
+
+##############################################################################
+# Check that command line arguments correspond to an existing non-ambiguous
+# module name
+##############################################################################
 if args.command in longmodnames:
     longmodname = args.command
 elif args.command in shortmodnames:
@@ -83,6 +98,17 @@ else:
     print(longmodnames)
     sys.exit(2)
 
+##############################################################################
+# Import the module and run the main function
+#
+# TODO: 
+# - catch TypeError and print main.__doc__ (should contain at least the 
+#   function signature)
+# - catch AttributeError to print a helpful message about missing main()
+# - overload default -h --help message to print module's main.__doc__ 
+#   (if module is found and has a main function)
+##############################################################################
+
 m = import_module(longmodname)
 main = getattr(m, "main")
 
@@ -90,9 +116,10 @@ main = getattr(m, "main")
 status = main(*args.mainargs)
 
 # if status is an int, it is considered an exit status
-# (0 for success, 1 for general errors, 2 for command line syntax error…)
+# (0 for success, 1 for general errors, 2 for command line syntax error)
 # None is equivalent to 0, any other object is printed to stderr and results
 # in an exit code of 1
 sys.exit(status)
+
 
 
