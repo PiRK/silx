@@ -26,8 +26,8 @@
 This version uses ``os.walk`` to find a list of all ``.py`` and ``.so`` files
 in directories containing a __init__.py file.
 
-A module name can be specified as a long name (e.g silx.gui.plot.PlotWindow),
-or as a short name (eg PlotWindow if there is no ambiguity).
+A module name can be specified as a long name (e.g `silx.gui.plot.PlotWindow`),
+or as a short name (eg `PlotWindow`) if there is no ambiguity.
 
 
 usage: runmodule_oswalk.py [-h] [-l] [-s SEARCH] [module] ...
