@@ -396,7 +396,10 @@ class Plugin1DBase(object):
         print("applyMethod not implemented")
         return
 
+
 MENU_TEXT = "Plugin1D Base"
+
+
 def getPlugin1DInstance(plotWindow, **kw):
     """
     This function will be called by the plot window instantiating and calling
