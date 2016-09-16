@@ -22,23 +22,12 @@
 # THE SOFTWARE.
 #
 # ###########################################################################*/
-__authors__ = ["T. Vincent"]
+from .Plugin1DBase import __doc__ as plugin_base_doc
+
+__authors__ = ["P. Knobel"]
 __license__ = "MIT"
-__date__ = "16/02/2016"
+__date__ = "16/09/2016"
+__doc__ = plugin_base_doc
 
 
-from numpy.distutils.misc_util import Configuration
 
-
-def configuration(parent_package='', top_path=None):
-    config = Configuration('plot', parent_package, top_path)
-    config.add_subpackage('test')
-    config.add_subpackage('plugins')
-
-    return config
-
-
-if __name__ == "__main__":
-    from numpy.distutils.core import setup
-
-    setup(configuration=configuration)

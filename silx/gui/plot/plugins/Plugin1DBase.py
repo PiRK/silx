@@ -33,25 +33,25 @@
 A 1D plugin is a module that can be added to the silx plot window in order to
 perform user defined operations of the plotted 1D data.
 
-A plugin module must define a module variable ``MENU_TEXT`` (string) and a
-module function ``getPlugin1DInstance``. This function will be called with an
-instance of a :class:`PlotWindow` as first argument, and must return an object
-implementing a number of methods.
+A plugin module must define a module variable :var:`MENU_TEXT` (string) and a
+module function :func:`getPlugin1DInstance`. This function will be called with an
+instance of a :class:`silx.gui.plot.PlotWindow` as first argument, and must return
+a plugin object implementing a number of methods.
 
-A plugin inherits the :class:`Plugin1DBase.Plugin1DBase` class and implements the
-additional methods:
+A plugin object is an instance of a class that inherits the
+:class:`Plugin1DBase` class and implements the additional methods:
 
     - :meth:`getMethods`: returns a list of available action names
     - :meth:`getMethodToolTip`: return a tooltip for the specified action
       (optional but convenient)
-    - ``:meth:`getMethodPixmap(methodName)``:  return a QPixMap icon for the
+    - :meth:`getMethodPixmap(methodName)`:  return a QPixMap icon for the
       specified action (optional)
     - :meth:`applyMethod`: apply the specified action; this can
       typically involve getting the active curve, or all curves, process the
       data, and add the resulting new curve(s) to the plot.
 
-These plugins will be compatible with any 1D-plot window that implements the :class:`Plot`
-interface.
+These plugins will be compatible with any 1D-plot window that implements the
+:class:`silx.gui.plot.Plot.Plot` interface.
 
 The main methods are reproduced here and can be directly accessed as plugin methods:
 
@@ -125,6 +125,7 @@ __date__ = "16/09/2016"
 
 _logger = logging.getLogger(__name__)
 
+
 class Plugin1DBase(object):
     def __init__(self, plotWindow, **kw):
         """
@@ -136,7 +137,7 @@ class Plugin1DBase(object):
         """
         self._plotWindow = weakref.proxy(plotWindow)
 
-    #Window related functions
+    # Window related functions
     def windowTitle(self):
         if hasattr(self._plotWindow, "windowTitle") and\
                 callable(self._plotWindow.windowTitle):
@@ -220,9 +221,9 @@ class Plugin1DBase(object):
                  [...],
                  [xvaluesn, yvaluesn, legendn, dictn]]
         """
-        allCurves = self.getAllCurves() * 1
-        for i in range(len(allCurves)):
-            curve = allCurves[i]
+        all_curves = self.getAllCurves() * 1
+        for i in range(len(all_curves)):
+            curve = all_curves[i]
             x, y, legend, info = curve[0:4]
             # Sort
             idx = numpy.argsort(x, kind='mergesort')
@@ -233,8 +234,8 @@ class Plugin1DBase(object):
             idx = numpy.nonzero((xproc[1:] > xproc[:-1]))[0]
             xproc = numpy.take(xproc, idx)
             yproc = numpy.take(yproc, idx)
-            allCurves[i][0:2] = xproc, yproc
-        return allCurves
+            all_curves[i][0:2] = xproc, yproc
+        return all_curves
 
     def getGraphXLimits(self):
         """
@@ -327,6 +328,9 @@ class Plugin1DBase(object):
         :param legend: The legend associated to the curve
         :type legend: string
         """
+        if replot is not None:
+            _logger.warning('Ignoring deprecated replot parameter')
+
         return self._plotWindow.setActiveCurve(legend)
 
     def setGraphTitle(self, title):
@@ -357,7 +361,7 @@ class Plugin1DBase(object):
         return self.setGraphYLabel(title)
 
 
-    #Methods to be implemented by the plugin
+    # Methods to be implemented by the plugin
     def getMethods(self, plottype=None):
         """
         :param plottype: string or None for the case the plugin only support
@@ -396,8 +400,9 @@ MENU_TEXT = "Plugin1D Base"
 def getPlugin1DInstance(plotWindow, **kw):
     """
     This function will be called by the plot window instantiating and calling
-    the plugins. It passes itslef as first argument, but the default implementation
-    of the base class only keeps a weak reference to prevent cirvular references.
+    the plugins. The plot window passes a reference to itself as first argument,
+    but the default implementation of :class:`Plugin1DBase` only keeps a weak
+    reference to prevent circular references.
     """
     ob = Plugin1DBase(plotWindow)
     return ob
