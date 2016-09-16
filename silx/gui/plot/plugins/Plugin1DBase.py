@@ -23,51 +23,55 @@
 #
 # ###########################################################################*/
 # FIXME: plugin dir in doc - replace PyMca with silx?
+# commented paragraph:
+#
+# Plugins can be automatically installed provided they are in the appropriate place:
+#
+#     - In the user home directory: ${HOME}/PyMca/plugins (POSIX systems)
+#     - In "My Documents\\\\PyMca\\\\plugins" (Windows)
 """
-A 1D plugin is a module that can be added to the PyMca 1D window in order to
+A 1D plugin is a module that can be added to the silx plot window in order to
 perform user defined operations of the plotted 1D data.
 
-Plugins can be automatically installed provided they are in the appropriate place:
+A plugin module must define a module variable ``MENU_TEXT`` (string) and a
+module function ``getPlugin1DInstance``. This function will be called with an
+instance of a :class:`PlotWindow` as first argument, and must return an object
+implementing a number of methods.
 
-    - In the user home directory: ${HOME}/PyMca/plugins (POSIX systems)
-    - In "My Documents\\\\PyMca\\\\plugins" (Windows)
+A plugin inherits the :class:`Plugin1DBase.Plugin1DBase` class and implements the
+additional methods:
 
-A plugin inherit the Plugin1DBase.Plugin1DBase class and implement the methods:
+    - :meth:`getMethods`: returns a list of available action names
+    - :meth:`getMethodToolTip`: return a tooltip for the specified action
+      (optional but convenient)
+    - ``:meth:`getMethodPixmap(methodName)``:  return a QPixMap icon for the
+      specified action (optional)
+    - :meth:`applyMethod`: apply the specified action; this can
+      typically involve getting the active curve, or all curves, process the
+      data, and add the resulting new curve(s) to the plot.
 
-    - getMethods
-    - getMethodToolTip (optional but convenient)
-    - getMethodPixmap (optional)
-    - applyMethod
+These plugins will be compatible with any 1D-plot window that implements the :class:`Plot`
+interface.
 
-and modify the static module variable MENU_TEXT and the static module function
-getPlugin1DInstance according to the defined plugin.
+The main methods are reproduced here and can be directly accessed as plugin methods:
 
-These plugins will be compatible with any 1D-plot window that implements the Plot1D
-interface. The plot window interface is described in the Plot1DBase class.
+    - :meth:`addCurve`
+    - :meth:`getActiveCurve`
+    - :meth:`getAllCurves`
+    - :meth:`getGraphXLimits`
+    - :meth:`getGraphYLimits`
+    - :meth:`getGraphTitle`
+    - :meth:`getGraphXLabel`
+    - :meth:`getGraphYLabel`
+    - :meth:`removeCurve`
+    - :meth:`setActiveCurve`
+    - :meth:`setGraphTitle`
+    - :meth:`setGraphXLimits`
+    - :meth:`setGraphYLimits`
+    - :meth:`setGraphXLabel`
+    - :meth:`setGraphYLabel`
 
-The main items are reproduced here and can be directly accessed as plugin methods.
-
-    - addCurve
-    - getActiveCurve
-    - getAllCurves
-    - getGraphXLimits
-    - getGraphYLimits
-    - getGraphTitle
-    - getGraphXLabel
-    - getGraphXTitle
-    - getGraphYLabel
-    - getGraphYTitle
-    - removeCurve
-    - setActiveCurve
-    - setGraphTitle
-    - setGraphXLimits
-    - setGraphYLimits
-    - setGraphXLabel
-    - setGraphYLabel
-    - setGraphXTitle
-    - setGraphYTitle
-
-A simple plugin example, normalizing each curve to its maximum and vertically
+The following plugin example is normalizing each curve to its maximum and vertically
 shifting the curves.
 
 .. code-block:: python
@@ -115,9 +119,9 @@ import weakref
 import numpy
 import logging
 
-__authors__ = ["V.A. Sole"]
+__authors__ = ["V.A. Sole", "P. Knobel"]
 __license__ = "MIT"
-__date__ = "23/02/2016"
+__date__ = "16/09/2016"
 
 _logger = logging.getLogger(__name__)
 
@@ -134,12 +138,10 @@ class Plugin1DBase(object):
 
     #Window related functions
     def windowTitle(self):
-        name = self._plotWindow.windowTitle()
-        try:
-            name = self._plotWindow.windowTitle()
-        except:
-            name = ""
-        return name
+        if hasattr(self._plotWindow, "windowTitle") and\
+                callable(self._plotWindow.windowTitle):
+            return self._plotWindow.windowTitle()
+        raise AttributeError("%s does not have a windowTitle method" % self._plotWindow)
 
     def addCurve(self, x, y, legend=None, info=None,
                  replace=False, resetzoom=True,
@@ -333,6 +335,27 @@ class Plugin1DBase(object):
         :type title: string
         """
         return self._plotWindow.setGraphTitle(title)
+
+    def setGraphXLabel(self, label):
+        """Update the X axis label
+        :param str label: The X label
+        """
+        return self._plotWindow.setGraphXlabel(label)
+
+    def setGraphYLabel(self, label):
+        """Update the Y axis label
+        :param str label: The Y axis label
+        """
+        return self._plotWindow.setGraphYLabel(label)
+
+    def setGraphXTitle(self, title):
+        _logger.warning('setGraphXTitle is deprecated, use setGraphXLabel instead')
+        return self.setGraphXLabel(title)
+
+    def setGraphYTitle(self, title):
+        _logger.warning('setGraphYTitle is deprecated, use setGraphXLabel instead')
+        return self.setGraphYLabel(title)
+
 
     #Methods to be implemented by the plugin
     def getMethods(self, plottype=None):
