@@ -93,50 +93,46 @@ class PluginLoader(object):
         if method is None:
             method = 'getPlugin1DInstance'
         targetMethod = method
+
         if directoryList in [None, [] ]:
             directoryList = self._pluginDirList
             if directoryList in [None, []]:
                 directoryList = [PLUGINS_DIR]
-        if DEBUG:
-            print("method: %s" % targetMethod)
-            print("directoryList: %s" % directoryList)
+
         exceptionMessage = ""
         self._pluginDirList = directoryList
-        self.pluginList = []
+
         for directory in self._pluginDirList:
             if directory is None:
                 continue
             if not os.path.exists(directory):
                 raise IOError("Directory:\n%s\ndoes not exist." % directory)
+            if directory not in sys.path:
+                sys.path.insert(0, directory)
 
-            fileList = glob.glob(os.path.join(directory, "*.py"))
+            # take only modules which are plugins
+            moduleList = [fname[:-3] for fname in
+                          glob.glob(os.path.join(directory, "*.py")) if
+                          is_plugin_module(fname, targetMethod)]
 
-            # prevent unnecessary imports
-            moduleList = []
-            for fname in fileList:
-                if is_plugin_module(fname, targetMethod):
-                    moduleList.append(fname)
-
-            for module in moduleList:
-                pluginModName = os.path.basename(module)[:-3]
-                if directory not in sys.path:
-                    sys.path.insert(0, directory)
-
+            for pluginModName in moduleList:
+                # delete old instances of plugins
+                if pluginModName in self.pluginInstanceDict:
+                    del self.pluginInstanceDict[pluginModName]
 
                 try:
-                    if pluginModName not in self.pluginInstanceDict:
-                        if pluginModName in sys.modules:
-                            if hasattr(sys.modules[pluginModName], targetMethod):
-                                reload_module(pluginModName)
-                            else:
-                                __import__(pluginModName)
+                    if pluginModName in sys.modules:
+                        reload_module(pluginModName)
+                    else:
+                        __import__(pluginModName)
+
                     if hasattr(sys.modules[pluginModName], targetMethod):
-                        theCall = getattr(sys.modules[pluginModName],
-                                          targetMethod)
-                        self.pluginInstanceDict[pluginModName] = theCall(self)
+                        pluginGetter = getattr(sys.modules[pluginModName],
+                                               targetMethod)
+                        self.pluginInstanceDict[pluginModName] = pluginGetter(self)
                 except:
                     exceptionMessage += \
-                        "Problem importing module %s\n" % plugin
+                        "Problem importing module %s\n" % pluginModName
                     exceptionMessage += "%s\n" % sys.exc_info()[0]
                     exceptionMessage += "%s\n" % sys.exc_info()[1]
                     exceptionMessage += "%s\n" % sys.exc_info()[2]
@@ -149,9 +145,9 @@ class PluginLoader(object):
     @property
     def pluginList(self):
         """:attr:`pluginList` is defined as a property returning a list
-        with all keys of the ordered dict :attr:`pluginInstanceDict`
+        of all keys of the ordered dict :attr:`pluginInstanceDict`.
 
-        This is done for compatibility with PyMca, that used a regular
+        This is done for compatibility with PyMca, which used a regular
         dictionary together with a list to remember the order in which
         plugins are loaded.
 
@@ -176,7 +172,7 @@ def is_plugin_module(fname, plugin_getter="getPlugin1DInstance"):
     """Return True if a file is a plugin module.
 
     Plugin modules are characterized by the presence of a special function,
-    usually :func:`getPlugin1DInstance`
+    usually  named ``getPlugin1DInstance``
 
     :param str fname: Name of file we want to check for being a plugin module
     :param str plugin_getter: Name of the function returning a plugin object
