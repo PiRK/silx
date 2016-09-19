@@ -94,13 +94,13 @@ class PluginLoader(object):
             method = 'getPlugin1DInstance'
         targetMethod = method
 
-        if directoryList in [None, [] ]:
+        if directoryList in [None, []]:
             directoryList = self._pluginDirList
             if directoryList in [None, []]:
                 directoryList = [PLUGINS_DIR]
+        self._pluginDirList = directoryList
 
         exceptionMessage = ""
-        self._pluginDirList = directoryList
 
         for directory in self._pluginDirList:
             if directory is None:
@@ -116,7 +116,7 @@ class PluginLoader(object):
                           is_plugin_module(fname, targetMethod)]
 
             for pluginModName in moduleList:
-                # delete old instances of plugins
+                # delete old instances of plugins before reloading them
                 if pluginModName in self.pluginInstanceDict:
                     del self.pluginInstanceDict[pluginModName]
 
