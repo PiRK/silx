@@ -152,6 +152,18 @@ class _SafeH5FileRead(object):
             self.h5file.close()
 
 
+def _is_empty_dict(d):
+    return isinstance(d, dict) and not d
+
+
+def _is_non_empty_dict(d):
+    return isinstance(d, dict) and d
+
+
+def _is_empty_group(g):
+    return isinstance(g, h5py.Group) and not len(g)
+
+
 def dicttoh5(treedict, h5file, h5path='/',
              mode="w", overwrite_data=False,
              create_dataset_args=None):
@@ -217,39 +229,55 @@ def dicttoh5(treedict, h5file, h5path='/',
 
     with _SafeH5FileWrite(h5file, mode=mode) as h5f:
         for key in treedict:
-            if isinstance(treedict[key], dict) and len(treedict[key]):
+            if _is_non_empty_dict(treedict[key]):
                 # non-empty group: recurse
                 dicttoh5(treedict[key], h5f, h5path + key,
                          overwrite_data=overwrite_data,
                          create_dataset_args=create_dataset_args)
 
-            elif treedict[key] is None or (isinstance(treedict[key], dict) and
-                                           not len(treedict[key])):
+            elif treedict[key] is None or _is_empty_dict(treedict[key]):
+                # Create empty group
                 if (h5path + key) in h5f:
-                    if overwrite_data is True:
+                    if _is_empty_group(h5f[h5path + key]):
+                        # nothing to be done, no reason for a warning
+                        continue
+                    elif overwrite_data is True:
                         del h5f[h5path + key]
                     else:
                         logger.warning('key (%s) already exists. '
                                        'Not overwriting.' % (h5path + key))
                         continue
-                # Create empty group
                 h5f.create_group(h5path + key)
 
             else:
-                ds = _prepare_hdf5_dataset(treedict[key])
+                array_like = _prepare_hdf5_dataset(treedict[key])
                 # can't apply filters on scalars (datasets with shape == () )
-                if ds.shape == () or create_dataset_args is None:
-                    if h5path + key in h5f:
+                if array_like.shape == () or create_dataset_args is None:
+                    already_exists = (h5path + key) in h5f
+                    try:
+                        # if shape and dtype are compatible with a preexisting dataset,
+                        # reuse it
+                        dset = h5f.require_dataset(h5path + key,
+                                                   shape=array_like.shape,
+                                                   dtype=array_like.dtype)
+                    except TypeError:
+                        # dataset exists and is incompatible
                         if overwrite_data is True:
                             del h5f[h5path + key]
+                            dset = h5f.create_dataset(h5path + key,
+                                                      shape=array_like.shape,
+                                                      dtype=array_like.dtype)
                         else:
                             logger.warning('key (%s) already exists. '
                                            'Not overwriting.' % (h5path + key))
                             continue
-
-                    h5f.create_dataset(h5path + key,
-                                       data=ds)
+                    if not already_exists or overwrite_data:
+                        dset[...] = array_like
+                    else:
+                        logger.warning('key (%s) already exists. '
+                                       'Not overwriting.' % (h5path + key))
                 else:
+                    # in case compression is required, always delete then overwrite
                     if h5path + key in h5f:
                         if overwrite_data is True:
                             del h5f[h5path + key]
@@ -259,7 +287,7 @@ def dicttoh5(treedict, h5file, h5path='/',
                             continue
 
                     h5f.create_dataset(h5path + key,
-                                       data=ds,
+                                       data=array_like,
                                        **create_dataset_args)
 
 
