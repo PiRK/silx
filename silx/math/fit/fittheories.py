@@ -1,7 +1,7 @@
 # coding: utf-8
 #/*##########################################################################
 #
-# Copyright (c) 2004-2017 European Synchrotron Radiation Facility
+# Copyright (c) 2004-2018 European Synchrotron Radiation Facility
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -93,7 +93,7 @@ _logger = logging.getLogger(__name__)
 
 __authors__ = ["V.A. Sole", "P. Knobel"]
 __license__ = "MIT"
-__date__ = "15/05/2017"
+__date__ = "09/02/2018"
 
 
 DEFAULT_CONFIG = {
@@ -331,9 +331,12 @@ class FitTheories(object):
         fittedpar = []
 
         bg = self.strip_bg(y)
+        # Subtract background
+        xw = x
+        yw = y - bg
 
         if self.config['AutoFwhm']:
-            search_fwhm = guess_fwhm(y)
+            search_fwhm = guess_fwhm(yw)
         else:
             search_fwhm = int(float(self.config['FwhmPoints']))
         search_sens = float(self.config['Sensitivity'])
@@ -352,17 +355,16 @@ class FitTheories(object):
         npoints = len(y)
 
         # Find indices of peaks in data array
-        peaks = self.peak_search(y,
+        peaks = self.peak_search(yw,
                                  fwhm=search_fwhm,
                                  sensitivity=search_sens)
 
         if not len(peaks):
             forcepeak = int(float(self.config.get('ForcePeakPresence', 0)))
             if forcepeak:
-                delta = y - bg
                 # get index of global maximum
                 # (first one if several samples are equal to this value)
-                peaks = [numpy.nonzero(delta == delta.max())[0][0]]
+                peaks = [numpy.nonzero(yw == yw.max())[0][0]]
 
         # Find index of largest peak in peaks array
         index_largest_peak = 0
@@ -384,10 +386,6 @@ class FitTheories(object):
                     height_largest_peak = param2[0]
                     index_largest_peak = peak_index
                 peak_index += 1
-
-            # Subtract background
-            xw = x
-            yw = y - bg
 
             cons = numpy.zeros((len(param), 3), numpy.float)
 
