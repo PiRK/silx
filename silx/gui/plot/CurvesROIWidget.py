@@ -566,14 +566,15 @@ class ROITable(qt.QTableWidget):
                 except ValueError:
                     value = 0
                 if item.column() == self.COLUMNS_INDEX['To']:
-                    roi.todata = value
+                    roi.setTo(value)
                 else:
                     assert(item.column() == self.COLUMNS_INDEX['From'])
-                    roi.fromdata = value
-                self._updateMarker(roi.name)
+                    roi.setFrom(value)
+                self._updateMarker(roi.getName())
+
         if item.column() is self.COLUMNS_INDEX['ROI']:
             roi = getROI()
-            roi.name = item.text()
+            roi.setName(item.text())
             if self._showAllMarkers:
                 self._updateMarkers()
 
@@ -602,7 +603,7 @@ class ROITable(qt.QTableWidget):
             self.removeRow(item.row())
             del self._roiToItems[roi.getID()]
 
-            assert roi.name in self._roiDict
+            assert roi.getID() in self._roiDict
             del self._roiDict[roi.getID()]
 
             callback = functools.partial(WeakMethodProxy(self._updateRoiInfo),
@@ -631,7 +632,7 @@ class ROITable(qt.QTableWidget):
 
         itemID = self._getItem(name='ID', roi=roi, row=None)
         itemName = self._getItem(name='ROI', row=itemID.row(), roi=roi)
-        itemName.setText(roi.name)
+        itemName.setText(roi.getName())
         itemType = self._getItem(name='Type', row=itemID.row(), roi=roi)
         itemType.setText(roi.getType() or self.INFO_NOT_FOUND)
 
@@ -697,7 +698,7 @@ class ROITable(qt.QTableWidget):
     def _updateMarker(self, roiID):
         """Make sure the marker of the given roi name is updated"""
         if self._showAllMarkers or (self.activeRoi
-                                    and self.activeRoi.name == roiID):
+                                    and self.activeRoi.getName() == roiID):
             self._updateMarkers()
 
     def _updateMarkers(self):
@@ -707,24 +708,24 @@ class ROITable(qt.QTableWidget):
                 _color = 'black' if roi.isICR() == 'ICR' else 'blue'
                 _draggable = False if roi.isICR() == 'ICR' else True
 
-                _nameRoiMin = roi.name + ' ROI min'
-                _nameRoiMax = roi.name + ' ROI max'
+                _nameRoiMin = roi.getName() + ' ROI min'
+                _nameRoiMax = roi.getName() + ' ROI max'
                 self._markerLgds[_nameRoiMin] = roi
                 self._markerLgds[_nameRoiMax] = roi
-                self.plot.addXMarker(roi.fromdata,
+                self.plot.addXMarker(roi.getFrom(),
                                      legend=_nameRoiMin,
                                      text=_nameRoiMin,
                                      color=_color,
                                      draggable=_draggable)
-                self.plot.addXMarker(roi.todata,
+                self.plot.addXMarker(roi.getTo(),
                                      legend=_nameRoiMax,
                                      text=_nameRoiMax,
                                      color=_color,
                                      draggable=_draggable)
-                if self.roi._draggable and self._middleROIMarkerFlag:
-                    _nameRoiMiddle = roi.name + ' ROI middle'
+                if _draggable and self._middleROIMarkerFlag:
+                    _nameRoiMiddle = roi.getName() + ' ROI middle'
                     self._markerLgds[_nameRoiMiddle] = roi
-                    pos = 0.5 * (self.roi.getFrom() + self.roi.getTo())
+                    pos = 0.5 * (roi.getFrom() + roi.getTo())
                     self.plot.addXMarker(pos,
                                          legend=_nameRoiMiddle,
                                          text=_nameRoiMiddle,
@@ -860,7 +861,7 @@ class ROITable(qt.QTableWidget):
             x = ddict['x']
 
             if label.endswith('ROI min'):
-                roiMoved.fromdata = x
+                roiMoved.setFrom(x)
                 if self._middleROIMarkerFlag:
                     labelMiddle = roiMoved.getName() + ' ROI middle'
                     pos = 0.5 * (roiMoved.getTo() + roiMoved.getFrom())
@@ -870,9 +871,9 @@ class ROITable(qt.QTableWidget):
                                          color='yellow',
                                          draggable=True)
             elif label.endswith('ROI max'):
-                roiMoved.todata = x
+                roiMoved.setTo(x)
                 if self._middleROIMarkerFlag:
-                    pos = 0.5 * (roiMoved.todata + roiMoved.fromdata)
+                    pos = 0.5 * (roiMoved.getTo() + roiMoved.getFrom())
                     labelMiddle = roiMoved.getName() + ' ROI middle'
                     self.plot.addXMarker(pos,
                                          legend=labelMiddle,
@@ -880,9 +881,9 @@ class ROITable(qt.QTableWidget):
                                          color='yellow',
                                          draggable=True)
             elif label.endswith('ROI middle'):
-                delta = x - 0.5 * (roiMoved.fromdata + roiMoved.todata)
-                roiMoved.fromdata += delta
-                roiMoved.todata += delta
+                delta = x - 0.5 * (roiMoved.getFrom() + roiMoved.getTo())
+                roiMoved.setFrom(roiMoved.getFrom() + delta)
+                roiMoved.setTo(roiMoved.getTo() + delta)
 
                 labelMin = roiMoved.getName() + ' ROI min'
                 self.plot.addXMarker(roiMoved.getFrom(),
@@ -905,7 +906,7 @@ class ROITable(qt.QTableWidget):
         ddict['event'] = "currentROISignal"
         if self.activeRoi:
             ddict['ROI'] = self.activeRoi.toDict()
-        ddict['current'] = self.activeRoi.name if self.activeRoi else None
+        ddict['current'] = self.activeRoi.getName() if self.activeRoi else None
 
         self.sigROITableSignal .emit(ddict)
 
@@ -1047,7 +1048,7 @@ class ROI(qt.QObject):
         if 'from' in dic:
             roi.setFrom(dic['from'])
         if 'to' in dic:
-            roi.setto(dic['to'])
+            roi.setTo(dic['to'])
         if 'type' in dic:
             roi.setType(dic['type'])
         return roi
