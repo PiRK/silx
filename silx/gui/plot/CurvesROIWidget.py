@@ -430,6 +430,7 @@ class ROITable(qt.QTableWidget):
             header.setResizeMode(qt.QHeaderView.ResizeToContents)
         self.sortByColumn(0, qt.Qt.AscendingOrder)
         self.hideColumn(self.COLUMNS_INDEX['ID'])
+        self._roiDict = {}
 
     def setPlot(self, plot):
         self.clear()
