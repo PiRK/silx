@@ -600,6 +600,10 @@ class ROITable(qt.QTableWidget):
             assert roi.name in self.roidict
             del self._roidict[roi._id]
 
+            callback = functools.partial(WeakMethodProxy(self._updateRoiInfo),
+                                         roi._id)
+            roi.sigChanged.connect(callback)
+
     def setActiveRoi(self, roi):
         """
         Define the given roi as the active one.
@@ -951,12 +955,10 @@ class ROI(qt.QObject):
         self._id = _indexNextROI
         _indexNextROI += 1
 
-        self.setName(name)
-        self.setFrom(fromdata)
-        self.setTo(todata)
-
-        self.setMarkerDraggable(False)
-        self.setType(type_ or 'Default')
+        self._name = name
+        self._fromdata = fromdata
+        self._todata = todata
+        self._type = type_ or 'Default'
 
     def setType(self, type_):
         """
@@ -964,6 +966,7 @@ class ROI(qt.QObject):
         :param str type_:
         """
         self._type = type_
+        self.sigChanged.emit()
 
     def getType(self):
         """
@@ -979,6 +982,7 @@ class ROI(qt.QObject):
         :param str name:
         """
         self._name = name
+        self.sigChanged.emit()
 
     def getName(self):
         """
@@ -993,6 +997,7 @@ class ROI(qt.QObject):
         :param frm: set x coordinate of the left limit
         """
         self._fromdata = frm
+        self.sigChanged.emit()
 
     def getFrom(self):
         """
@@ -1007,6 +1012,7 @@ class ROI(qt.QObject):
         :param to: x coordinate of the right limit
         """
         self._todata = to
+        self.sigChanged.emit()
 
     def getTo(self):
         """
