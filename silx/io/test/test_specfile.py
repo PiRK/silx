@@ -1,6 +1,6 @@
 # coding: utf-8
 # /*##########################################################################
-# Copyright (C) 2016-2017 European Synchrotron Radiation Facility
+# Copyright (C) 2016-2018 European Synchrotron Radiation Facility
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -298,7 +298,7 @@ class TestSpecFile(unittest.TestCase):
         # Scan.data is transposed after readinq, so column is the first index
         self.assertAlmostEqual(numpy.sum(self.scan25.data_column_by_name("col2")),
                                numpy.sum(self.scan25.data[2, :]))
-        with self.assertRaises(specfile.SfErrColNotFound):
+        with self.assertRaises(specfile.SfError):
             self.scan25.data_column_by_name("ygfxgfyxg")
 
     def test_motors(self):

@@ -917,28 +917,12 @@ cdef class SpecFile(object):
         :return: Data column as a 1D array of doubles
         :rtype: numpy.ndarray
         """
-        cdef:
-            double* data_column
-            long i, nlines
-            int error = SF_ERR_NO_ERRORS
-            double[:] ret_array
+        # try not using SfDataColByName (suspect memory leak)
+        labels = self.labels(scan_index)
+        if label not in labels:
+            raise SfErrLabelNotFound("Label not found error ( SpecFile )")
 
-        label = _string_to_char_star(label)
-
-        nlines = specfile_wrapper.SfDataColByName(self.handle,
-                                                  scan_index + 1,
-                                                  label,
-                                                  &data_column,
-                                                  &error)
-        self._handle_error(error)
-
-        ret_array = numpy.empty((nlines,), dtype=numpy.double)
-
-        for i in range(nlines):
-            ret_array[i] = data_column[i]
-
-        free(data_column)
-        return numpy.asarray(ret_array)
+        return self.data(scan_index)[:, labels.index(label)]
 
     def scan_header(self, scan_index):
         """Return list of scan header lines.
