@@ -437,7 +437,6 @@ class ROITable(qt.QTableWidget):
         self.sortByColumn(0, qt.Qt.AscendingOrder)
         self.hideColumn(self.COLUMNS_INDEX['ID'])
 
-
     def setPlot(self, plot):
         self.clear()
         self.plot = plot
@@ -862,6 +861,33 @@ class ROITable(qt.QTableWidget):
     def _activeCurveChanged(self, curve):
         self.calculateRois()
 
+    def setCountsVisible(self, visible):
+        """
+        Display the columns relative to areas or not
+
+        :param bool visible: True if the columns 'Raw Area' and 'Net Area'
+                             should be visible.
+        """
+        if visible is True:
+            self.showColumn(self.COLUMNS_INDEX['Raw Counts'])
+            self.showColumn(self.COLUMNS_INDEX['Net Counts'])
+        else:
+            self.hideColumn(self.COLUMNS_INDEX['Raw Counts'])
+            self.hideColumn(self.COLUMNS_INDEX['Net Counts'])
+
+    def setAreaVisible(self, visible):
+        """
+        Display the columns relative to areas or not
+
+        :param bool visible: True if the columns 'Raw Area' and 'Net Area'
+                             should be visible.
+        """
+        if visible is True:
+            self.showColumn(self.COLUMNS_INDEX['Raw Area'])
+            self.showColumn(self.COLUMNS_INDEX['Net Area'])
+        else:
+            self.hideColumn(self.COLUMNS_INDEX['Raw Area'])
+            self.hideColumn(self.COLUMNS_INDEX['Net Area'])
 
 _indexNextROI = 0
 
@@ -1355,6 +1381,9 @@ class CurvesROIDockWidget(qt.QDockWidget):
 
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.setWidget(self.roiWidget)
+
+        self.setAreaVisible = self.roiWidget.roiTable.setAreaVisible
+        self.setCountsVisible = self.roiWidget.roiTable.setCountsVisible
 
     def _forwardSigROISignal(self, ddict):
         # emit deprecated signal for backward compatibility (silx < 0.7)
