@@ -1,7 +1,7 @@
 # coding: utf-8
 # /*##########################################################################
 #
-# Copyright (c) 2004-2017 European Synchrotron Radiation Facility
+# Copyright (c) 2004-2018 European Synchrotron Radiation Facility
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -341,6 +341,12 @@ class CurvesROIWidget(qt.QWidget):
             if self.roiTable.rowCount() is 0:
                 self._add()
                 self.calculateRois()
+
+    @deprecation.deprecated(reason="API modification",
+                            replacement="setRois",
+                            since_version="0.8.0")
+    def fillFromROIDict(self, *args, **kwargs):
+        self.roiTable.fillFromROIDict(*args, **kwargs)
 
 
 class _FloatItem(qt.QTableWidgetItem):
