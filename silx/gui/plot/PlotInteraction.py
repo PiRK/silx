@@ -704,6 +704,62 @@ class SelectEllipse(Select2Points):
         self.resetSelectionArea()
 
 
+class SelectCircle(Select2Points):
+    """Drawing circle selection area state machine."""
+    def beginSelect(self, x, y):
+        self.center = self.plot.pixelToData(x, y)
+        assert self.center is not None
+
+    def _getRadius(self, pointOnPerimeter):
+        """
+        Returns the circle radius
+
+        :param Tuple[float,float] pointOnPerimeter: A point of the circle
+        :rtype: float
+        """
+        x = self.center[0] - pointOnPerimeter[0]
+        y = self.center[1] - pointOnPerimeter[1]
+        return math.sqrt(x**2 + y**2)
+
+    def select(self, x, y):
+        dataPos = self.plot.pixelToData(x, y)
+        assert dataPos is not None
+        radius = self._getRadius(dataPos)
+
+        # Circle used for circle preview
+        nbpoints = 27.
+        angles = numpy.arange(nbpoints) * numpy.pi * 2.0 / nbpoints
+        circleShape = numpy.array((numpy.cos(angles) * radius,
+                                   numpy.sin(angles) * radius)).T
+        circleShape += numpy.array(self.center)
+
+        self.setSelectionArea(circleShape,
+                              shape="polygon",
+                              fill='hatch',
+                              color=self.color)
+
+        eventDict = prepareDrawingSignal('drawingProgress',
+                                         'circle',
+                                         (self.center, dataPos),
+                                         self.parameters)
+        self.plot.notify(**eventDict)
+
+    def endSelect(self, x, y):
+        self.resetSelectionArea()
+
+        dataPos = self.plot.pixelToData(x, y)
+        assert dataPos is not None
+
+        eventDict = prepareDrawingSignal('drawingFinished',
+                                         'circle',
+                                         (self.center, dataPos),
+                                         self.parameters)
+        self.plot.notify(**eventDict)
+
+    def cancelSelect(self):
+        self.resetSelectionArea()
+
+
 class SelectRectangle(Select2Points):
     """Drawing rectangle selection area state machine."""
     def beginSelect(self, x, y):
@@ -1584,6 +1640,7 @@ _DRAW_MODES = {
     'polygon': SelectPolygon,
     'rectangle': SelectRectangle,
     'ellipse': SelectEllipse,
+    'circle': SelectCircle,
     'line': SelectLine,
     'vline': SelectVLine,
     'hline': SelectHLine,
@@ -1644,17 +1701,6 @@ class PlotInteraction(object):
     :param plot: The :class:`Plot` to apply interaction to
     """
 
-    _DRAW_MODES = {
-        'polygon': SelectPolygon,
-        'rectangle': SelectRectangle,
-        'ellipse': SelectEllipse,
-        'line': SelectLine,
-        'vline': SelectVLine,
-        'hline': SelectHLine,
-        'polylines': SelectFreeLine,
-        'pencil': DrawFreeHand,
-    }
-
     def __init__(self, plot):
         self._plot = weakref.ref(plot)  # Avoid cyclic-ref
 
@@ -1704,7 +1750,7 @@ class PlotInteraction(object):
                      a tuple of 4 floats or None.
         :param str shape: Only for 'draw' mode. The kind of shape to draw.
                           In 'polygon', 'rectangle', 'line', 'vline', 'hline',
-                          'polylines'.
+                          'polylines', 'ellipse', 'circle'
                           Default is 'polygon'.
         :param str label: Only for 'draw' mode.
         :param float width: Width of the pencil. Only for draw pencil mode.
